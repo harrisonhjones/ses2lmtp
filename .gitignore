@@ -1,0 +1,9 @@
+# Binaries for programs and plugins
+ses2lmtp
+ses2lmtp.exe
+
+# Environment files
+.env
+
+# IDE and editor files
+.vscode/
