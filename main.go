@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/mail"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -19,13 +21,28 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqsTypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	smtp "github.com/emersion/go-smtp"
 	_ "github.com/joho/godotenv/autoload"
 )
 
+
+
 func main() {
 	sqsQueueURL := MustGetEnv("SQS_QUEUE_URL", nil)
-	//lmtpHost := MustGetEnv("LMTP_HOST", nil)
-	//lmtpPort := MustGetEnv("LMTP_PORT", nil)
+	lmtpHost := MustGetEnv("LMTP_HOST", nil)
+	lmtpFrom := MustGetEnv("LMTP_FROM", nil)
+	mailboxes := Map(strings.Split(MustGetEnv("MAILBOXES", nil), ","), func(v string) string {
+		return strings.TrimSpace(v)
+	})
+	defaultMailbox := MustGetEnv("DEFAULT_MAILBOX", nil)
+
+	slog.Info("starting up", "config", map[string]string{
+		"mailboxes":      strings.Join(mailboxes, ","),
+		"defaultMailbox": defaultMailbox,
+		"lmtpHost":       lmtpHost,
+		"lmtpFrom":       lmtpFrom,
+		"sqsQueueURL":    sqsQueueURL,
+	})
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -49,7 +66,9 @@ func main() {
 	// Create AWS service clients
 	sqsClient := sqs.NewFromConfig(cfg)
 	s3Client := s3.NewFromConfig(cfg)
-	processMessage := newMessageProcessor(ctx, s3Client)
+	lmtpSender := newLMTPSender(lmtpHost, lmtpFrom)
+
+	processMessage := newMessageProcessor(mailboxes, defaultMailbox, s3Client, lmtpSender)
 
 	slog.Info("starting ses to lmtp forwarder")
 
@@ -85,7 +104,7 @@ func main() {
 					return
 				}
 
-				if err := processMessage(message); err != nil {
+				if err := processMessage(ctx, message); err != nil {
 					slog.Error("failed to process message", "err", err)
 					continue
 				}
@@ -115,8 +134,13 @@ func main() {
 	}
 }
 
-func newMessageProcessor(ctx context.Context, s3Client *s3.Client) func(message sqsTypes.Message) error {
-	return func(message sqsTypes.Message) error {
+func newMessageProcessor(
+	mailboxes []string,
+	defaultMailbox string,
+	s3Client *s3.Client,
+	emailSender func(to []string, body io.Reader) error,
+) func(ctx context.Context, message sqsTypes.Message) error {
+	return func(ctx context.Context, message sqsTypes.Message) error {
 		// Check if context is cancelled before processing
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -172,6 +196,37 @@ func newMessageProcessor(ctx context.Context, s3Client *s3.Client) func(message 
 		}
 		slog.Info("parsed email", "email", emailMsg)
 
+		slog.Info("got recipients from ses event", "recipients", sesEvent.Receipt.Recipients)
+
+		slog.Info("filtering recipients")
+		recipients := Filter(sesEvent.Receipt.Recipients, func(r string) bool {
+			return Contains(mailboxes, r)
+		})
+		if len(recipients) == 0 {
+			slog.Info("no valid recipients found, using default mailbox", "defaultMailbox", defaultMailbox)
+			recipients = []string{defaultMailbox}
+		}
+		slog.Info("filtered recipients", "recipients", recipients)
+
+		slog.Info("sending email")
+		if err := emailSender(recipients, bytes.NewBuffer(emailBody)); err != nil {
+			return fmt.Errorf("failed to send email: %w", err)
+		}
+		slog.Info("sent email")
 		return nil
+	}
+}
+
+func newLMTPSender(host, from string) func(to []string, body io.Reader) error {
+	return func(to []string, body io.Reader) error {
+		conn, err := net.Dial("tcp", host)
+		Check(err, "failed to dial")
+
+		lmtpClient := smtp.NewClientLMTP(conn)
+		defer func() {
+			_ = lmtpClient.Quit()
+			_ = conn.Close()
+		}()
+		return lmtpClient.SendMail(from, to, body)
 	}
 }
