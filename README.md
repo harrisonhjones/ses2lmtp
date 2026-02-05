@@ -1,6 +1,14 @@
 # SES to LMTP Forwarder
 
-A Go application that retrieves SES messages from an SQS queue, fetches email bodies from S3, and forwards them to a local LMTP server.
+A Go application that retrieves SES messages from an SQS queue, fetches email bodies from S3, and forwards them to a local LMTP server. The application includes graceful shutdown handling and can be run locally or in a Docker container.
+
+## Features
+
+- Polls SQS for SES notification messages
+- Retrieves email content from S3
+- Graceful shutdown on SIGINT/SIGTERM signals
+- Context-based cancellation throughout the application
+- Docker support with health checks
 
 ## Quick Start with Docker
 
@@ -12,11 +20,15 @@ A Go application that retrieves SES messages from an SQS queue, fetches email bo
 2. **Edit `.env` with your configuration:**
    - Set your AWS credentials
    - Update the SQS queue URL
-   - Configure LMTP server details
+   - Configure LMTP server details (if needed)
 
 3. **Build and run:**
    ```bash
-   docker-compose up --build
+   # Build the Docker image
+   docker build -t ses2lmtp .
+   
+   # Run the container
+   docker run --env-file .env --network host ses2lmtp
    ```
 
 ## Configuration
@@ -26,38 +38,40 @@ A Go application that retrieves SES messages from an SQS queue, fetches email bo
 - `AWS_REGION`: AWS region (default: us-east-1)
 - `AWS_ACCESS_KEY_ID`: AWS access key
 - `AWS_SECRET_ACCESS_KEY`: AWS secret key
-- `SQS_QUEUE_URL`: SES SQS queue URL
-- `LMTP_HOST`: LMTP server host (default: 192.168.0.123)
-- `LMTP_PORT`: LMTP server port (default: 31024)
+- `SQS_QUEUE_URL`: SES SQS queue URL (required)
+- `LMTP_HOST`: LMTP server host and port (e.g., 192.168.0.123:31024)
+- `LMTP_FROM`: From address for LMTP forwarding (e.g., sqs2lmtp@domain1.tld)
+- `MAILBOXES`: Comma-separated list of allowed mailboxes (e.g., mb1@domain2.tld,mb2@domain3.tld)
+- `DEFAULT_MAILBOX`: Default mailbox for forwarding (e.g., user@domain2.tld)
 
 ### AWS Credentials
 
 You can provide AWS credentials in several ways:
 
 1. **Environment variables** (as shown in .env)
-2. **AWS credentials file** (uncomment the volume mount in docker-compose.yml)
-3. **IAM roles** (if running on EC2)
+2. **AWS credentials file** (mount `~/.aws` to `/root/.aws` in container)
+3. **IAM roles** (if running on EC2 or EKS)
 
 ## Docker Commands
 
 ```bash
 # Build the image
-docker-compose build
+docker build -t ses2lmtp .
 
-# Run in foreground
-docker-compose up
+# Run in foreground with environment file
+docker run --env-file .env --network host ses2lmtp
 
 # Run in background
-docker-compose up -d
+docker run -d --env-file .env --network host --name ses2lmtp ses2lmtp
 
 # View logs
-docker-compose logs -f
+docker logs -f ses2lmtp
 
-# Stop the service
-docker-compose down
+# Stop the container
+docker stop ses2lmtp
 
-# Rebuild and restart
-docker-compose up --build
+# Remove the container
+docker rm ses2lmtp
 ```
 
 ## Local Development
@@ -66,10 +80,71 @@ docker-compose up --build
 # Install dependencies
 go mod tidy
 
-# Run locally
-go run main.go
+# Run locally (make sure .env is configured)
+go run .
+
+# Build locally
+go build -o ses2lmtp .
+./ses2lmtp
 ```
+
+## Graceful Shutdown
+
+The application supports graceful shutdown:
+- Send SIGINT (Ctrl+C) or SIGTERM to trigger shutdown
+- The application will finish processing current messages and exit cleanly
+- All AWS operations respect the cancellation context
 
 ## Network Configuration
 
-The container uses `network_mode: host` to access your local LMTP server. If your LMTP server is running in another container, you may need to adjust the network configuration.
+The Docker container uses `--network host` to access local services. If your LMTP server is running in another container, you may need to:
+- Use a custom Docker network
+- Update the network configuration accordingly
+- Modify the LMTP_HOST environment variable to point to the correct container
+
+## Health Check
+
+The Docker image includes a health check that verifies the process is running. The health check runs every 30 seconds and will mark the container as unhealthy if the process stops responding.
+
+## Testing
+
+The project includes comprehensive unit tests for all utility functions.
+
+### Running Tests
+
+```bash
+# Run all tests
+go test
+
+# Run tests with verbose output
+go test -v
+
+# Run tests with coverage
+go test -cover
+```
+
+### Test Coverage Visualization
+
+To generate and view a detailed HTML coverage report:
+
+```bash
+# Generate coverage profile
+go test -coverprofile coverage.out
+
+# Open HTML coverage report in browser
+go tool cover -html coverage.out
+```
+
+The HTML report will show:
+- Line-by-line coverage highlighting
+- Coverage percentages for each function
+- Uncovered code paths in red
+- Covered code paths in green
+
+### Function-Level Coverage
+
+To see coverage breakdown by function:
+
+```bash
+go tool cover -func coverage.out
+```

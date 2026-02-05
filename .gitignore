@@ -7,3 +7,6 @@ ses2lmtp.exe
 
 # IDE and editor files
 .vscode/
+
+# Test coverage
+coverage.out

@@ -1,13 +1,13 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 )
 
 func Check(err error, msg string) {
 	if err != nil {
-		log.Fatalf("%s: %v", msg, err)
+		panic(fmt.Sprintf("%s: %v", msg, err))
 	}
 }
 
@@ -17,7 +17,7 @@ func MustGetEnv(key string, fallback *string) string {
 		if fallback != nil {
 			return *fallback
 		}
-		log.Fatalf("environment variable %q is required", key)
+		panic(fmt.Sprintf("environment variable %q is required", key))
 	}
 	return value
 }

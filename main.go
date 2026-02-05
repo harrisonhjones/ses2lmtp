@@ -25,8 +25,6 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
-
-
 func main() {
 	sqsQueueURL := MustGetEnv("SQS_QUEUE_URL", nil)
 	lmtpHost := MustGetEnv("LMTP_HOST", nil)
@@ -79,14 +77,13 @@ func main() {
 			slog.Info("shutting down gracefully...")
 			return
 		default:
-			// Receive messages from SQS
+			slog.Info("polling messages from sqs")
 			result, err := sqsClient.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(sqsQueueURL),
 				MaxNumberOfMessages: 10,
 				WaitTimeSeconds:     20, // Long polling
 			})
 			if err != nil {
-				// Check if context was cancelled
 				if ctx.Err() != nil {
 					slog.Info("context cancelled, stopping message processing")
 					return
@@ -95,6 +92,7 @@ func main() {
 				time.Sleep(time.Second)
 				continue
 			}
+			slog.Info("polled messages from sqs", "count", len(result.Messages))
 
 			// Process each message
 			for _, message := range result.Messages {
@@ -104,31 +102,23 @@ func main() {
 					return
 				}
 
+				slog.Info("processing message")
 				if err := processMessage(ctx, message); err != nil {
 					slog.Error("failed to process message", "err", err)
 					continue
 				}
+				slog.Info("processed message")
 
-				/*
-								Bucket: aws.String(sesEvent.Receipt.Action.BucketName),
-					Key:    aws.String(sesEvent.Receipt.Action.ObjectKey),
-				*/
-				//var sesEvent events.SimpleEmailService
-				/*
-					err := processMessage(s3Client, message, lmtpHost+":"+lmtpPort)
-					if err != nil {
-						log.Printf("Error processing message: %v", err)
-						continue
-					}
-
-					// Delete message from queue after successful processing
-					_, err = sqsClient.DeleteMessage(context.TODO(), &sqs.DeleteMessageInput{
-						QueueUrl:      aws.String(sqsQueueURL),
-						ReceiptHandle: message.ReceiptHandle,
-					})
-					if err != nil {
-						log.Printf("Failed to delete message from queue: %v", err)
-					}*/
+				slog.Info("deleting message")
+				_, err = sqsClient.DeleteMessage(ctx, &sqs.DeleteMessageInput{
+					QueueUrl:      aws.String(sqsQueueURL),
+					ReceiptHandle: message.ReceiptHandle,
+				})
+				if err != nil {
+					slog.Info("failed to delete message from queue", "err", err)
+					continue
+				}
+				slog.Info("deleted message")
 			}
 		}
 	}
@@ -146,9 +136,7 @@ func newMessageProcessor(
 			return ctx.Err()
 		}
 
-		slog.Info("got message", "message", message)
-
-		slog.Info("parsing message as sns entity")
+		slog.Info("parsing message as sns entity", "message", message)
 		var snsEntity events.SNSEntity
 		if err := json.Unmarshal([]byte(Value(message.Body)), &snsEntity); err != nil {
 			return fmt.Errorf("failed to unmarshal sns entity: %w", err)
