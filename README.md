@@ -59,10 +59,10 @@ You can provide AWS credentials in several ways:
 docker build -t ses2lmtp .
 
 # Run in foreground with environment file
-docker run --env-file .env --network host ses2lmtp
+docker run --env-file .env ses2lmtp
 
 # Run in background
-docker run -d --env-file .env --network host --name ses2lmtp ses2lmtp
+docker run -d --env-file .env --name ses2lmtp ses2lmtp
 
 # View logs
 docker logs -f ses2lmtp

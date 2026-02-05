@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.22.5-alpine AS builder
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ses2lmtp .
+RUN go build -o ses2lmtp .
 
 # Final stage
 FROM alpine:latest
@@ -21,7 +21,7 @@ FROM alpine:latest
 # Install ca-certificates for HTTPS requests and procps for pgrep
 RUN apk --no-cache add ca-certificates procps
 
-WORKDIR /root/
+WORKDIR /app
 
 # Copy the binary from builder stage
 COPY --from=builder /app/ses2lmtp .
