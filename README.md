@@ -43,6 +43,7 @@ A Go application that retrieves SES messages from an SQS queue, fetches email bo
 - `LMTP_FROM`: From address for LMTP forwarding (e.g., sqs2lmtp@domain1.tld)
 - `MAILBOXES`: Comma-separated list of allowed mailboxes (e.g., mb1@domain2.tld,mb2@domain3.tld)
 - `DEFAULT_MAILBOX`: Default mailbox for forwarding (e.g., user@domain2.tld)
+- `SQS2LMTP_HEALTH_CHECK_PORT`: Port for health check endpoint (optional, defaults to 8080)
 
 ### AWS Credentials
 
