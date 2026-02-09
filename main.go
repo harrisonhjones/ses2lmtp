@@ -8,10 +8,12 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"net/http"
 	"net/mail"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -25,6 +27,11 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
+var (
+	errCount     = 0
+	errCountLock = &sync.RWMutex{}
+)
+
 func main() {
 	sqsQueueURL := MustGetEnv("SQS_QUEUE_URL", nil)
 	lmtpHost := MustGetEnv("LMTP_HOST", nil)
@@ -33,6 +40,7 @@ func main() {
 		return strings.TrimSpace(v)
 	})
 	defaultMailbox := MustGetEnv("DEFAULT_MAILBOX", nil)
+	healthCheckPort := MustGetEnv("HEALTH_CHECK_PORT", Pointer("8080"))
 
 	slog.Info("starting up", "config", map[string]string{
 		"mailboxes":      strings.Join(mailboxes, ","),
@@ -68,6 +76,19 @@ func main() {
 
 	processMessage := newMessageProcessor(mailboxes, defaultMailbox, s3Client, lmtpSender)
 
+	// Start HTTP server
+	httpServer := &http.Server{
+		Addr: ":" + healthCheckPort,
+	}
+	http.HandleFunc("/stats.json", statsHandler)
+
+	go func() {
+		slog.Info("starting http server", "addr", httpServer.Addr)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("http server error", "err", err)
+		}
+	}()
+
 	slog.Info("starting ses to lmtp forwarder")
 
 	// Main processing loop
@@ -75,6 +96,9 @@ func main() {
 		select {
 		case <-ctx.Done():
 			slog.Info("shutting down gracefully...")
+			if err := httpServer.Shutdown(context.Background()); err != nil {
+				slog.Error("failed to shutdown http server", "err", err)
+			}
 			return
 		default:
 			slog.Info("polling messages from sqs")
@@ -89,10 +113,16 @@ func main() {
 					return
 				}
 				slog.Error("failed to receive messages from sqs", "err", err)
+				errCountLock.Lock()
+				errCount++
+				errCountLock.Unlock()
 				time.Sleep(time.Second)
 				continue
 			}
 			slog.Info("polled messages from sqs", "count", len(result.Messages))
+			errCountLock.Lock()
+			errCount = 0
+			errCountLock.Unlock()
 
 			// Process each message
 			for _, message := range result.Messages {
@@ -217,4 +247,16 @@ func newLMTPSender(host, from string) func(to []string, body io.Reader) error {
 		}()
 		return lmtpClient.SendMail(from, to, body)
 	}
+}
+
+func statsHandler(w http.ResponseWriter, r *http.Request) {
+	errCountLock.RLock()
+	errCount := errCount
+	errCountLock.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"healthy":    errCount < 3,
+		"errorCount": errCount,
+	})
 }

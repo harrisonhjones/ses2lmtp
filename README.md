@@ -104,7 +104,49 @@ The Docker container uses `--network host` to access local services. If your LMT
 
 ## Health Check
 
-The Docker image includes a health check that verifies the process is running. The health check runs every 30 seconds and will mark the container as unhealthy if the process stops responding.
+The Docker image includes a health check that queries the `/stats.json` endpoint on port 8080. The health check runs every 30 seconds and will mark the container as unhealthy if the endpoint returns an unhealthy status or fails to respond.
+
+You can manually check the health status:
+```bash
+# Query the stats endpoint
+curl http://localhost:8080/stats.json
+
+# Check Docker health status
+docker inspect --format='{{.State.Health.Status}}' ses2lmtp
+```
+
+## Publishing to Docker Hub
+
+The image is published to [harrisonhjones/ses2lmtp](https://hub.docker.com/r/harrisonhjones/ses2lmtp/).
+
+### Publishing a New Version
+
+1. **Build the image with tags:**
+   ```bash
+   docker build -t harrisonhjones/ses2lmtp:latest .
+   ```
+
+2. **Login to Docker Hub:**
+   ```bash
+   docker login
+   ```
+
+3. **Push the image:**
+   ```bash
+   docker push harrisonhjones/ses2lmtp:latest
+   ```
+
+### Using the Published Image
+
+Instead of building locally, you can pull and run the published image:
+
+```bash
+# Pull the latest version
+docker pull harrisonhjones/ses2lmtp:latest
+
+# Run the published image
+docker run --env-file .env -p 8080:8080 harrisonhjones/ses2lmtp:latest
+```
 
 ## Testing
 

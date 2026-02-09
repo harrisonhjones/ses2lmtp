@@ -18,8 +18,8 @@ RUN go build -o ses2lmtp .
 # Final stage
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests and procps for pgrep
-RUN apk --no-cache add ca-certificates procps
+# Install ca-certificates for HTTPS requests, curl for healthcheck, and jq for JSON parsing
+RUN apk --no-cache add ca-certificates curl jq
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ COPY --from=builder /app/ses2lmtp .
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD pgrep ses2lmtp || exit 1
+    CMD curl http://localhost:8080/stats.json | jq -e '.healthy == true' || exit 1
 
 # Run the binary
 CMD ["./ses2lmtp"]
