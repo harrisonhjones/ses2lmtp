@@ -36,7 +36,7 @@ func main() {
 	sqsQueueURL := MustGetEnv("SQS_QUEUE_URL", nil)
 	lmtpHost := MustGetEnv("LMTP_HOST", nil)
 	lmtpFrom := MustGetEnv("LMTP_FROM", nil)
-	healthCheckPort := MustGetEnv("SQS2LMTP_HEALTH_CHECK_PORT", aws.String("8080"))
+	healthCheckPort := MustGetEnv("HEALTH_CHECK_PORT", aws.String("8080"))
 	mailboxes := Map(strings.Split(MustGetEnv("MAILBOXES", nil), ","), func(v string) string {
 		return strings.TrimSpace(v)
 	})
