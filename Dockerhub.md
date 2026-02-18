@@ -69,8 +69,9 @@ curl http://localhost:8080/stats.json
 ## Tags
 
 - `latest`: Latest stable release
+- `latest-dev`: Latest development build from main branch
 - `v*.*.*`: Specific version tags
-- `<commit-sha>`: Development builds from main branch
+- `<commit-sha>`: Development builds from main branch (specific commits)
 
 ## Source Code
 
