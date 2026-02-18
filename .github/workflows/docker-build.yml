@@ -29,9 +29,13 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "release" ]; then
             echo "tags=harrisonhjones/ses2lmtp:latest,harrisonhjones/ses2lmtp:${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
           else
             echo "tags=harrisonhjones/ses2lmtp:latest-dev,harrisonhjones/ses2lmtp:${{ github.sha }}" >> $GITHUB_OUTPUT
+            echo "version=dev-${{ github.sha }}" >> $GITHUB_OUTPUT
           fi
+          echo "commit=${{ github.sha }}" >> $GITHUB_OUTPUT
+          echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -39,6 +43,10 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            VERSION=${{ steps.meta.outputs.version }}
+            COMMIT=${{ steps.meta.outputs.commit }}
+            BUILD_DATE=${{ steps.meta.outputs.build_date }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

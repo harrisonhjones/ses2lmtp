@@ -12,8 +12,13 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN go build -o ses2lmtp .
+# Build arguments for version information
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG BUILD_DATE=unknown
+
+# Build the application with version information
+RUN go build -ldflags="-X 'main.version=${VERSION}' -X 'main.commit=${COMMIT}' -X 'main.buildDate=${BUILD_DATE}'" -o ses2lmtp .
 
 # Final stage
 FROM alpine:latest

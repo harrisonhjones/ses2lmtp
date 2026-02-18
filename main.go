@@ -28,11 +28,20 @@ import (
 )
 
 var (
+	// Build information set via ldflags
+	version   = "dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+
+	// Error counter for health check
 	errCount     = 0
 	errCountLock = &sync.RWMutex{}
 )
 
 func main() {
+	// Log build information
+	slog.Info("build information", "version", version, "commit", commit, "buildDate", buildDate)
+
 	sqsQueueURL := MustGetEnv("SQS_QUEUE_URL", nil)
 	lmtpHost := MustGetEnv("LMTP_HOST", nil)
 	lmtpFrom := MustGetEnv("LMTP_FROM", nil)
