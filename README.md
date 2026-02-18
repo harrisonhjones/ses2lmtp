@@ -120,7 +120,23 @@ docker inspect --format='{{.State.Health.Status}}' ses2lmtp
 
 The image is published to [harrisonhjones/ses2lmtp](https://hub.docker.com/r/harrisonhjones/ses2lmtp/).
 
-### Publishing a New Version
+### Automated Publishing with GitHub Actions
+
+The repository uses GitHub Actions to automatically build and push Docker images:
+
+- **On push to `main`**: Builds and pushes with the commit SHA as the tag (e.g., `harrisonhjones/ses2lmtp:abc123`)
+- **On GitHub release**: Builds and pushes with both `latest` and the release tag (e.g., `harrisonhjones/ses2lmtp:latest` and `harrisonhjones/ses2lmtp:v1.0.0`)
+
+#### Setup Requirements
+
+To enable automated publishing, configure these secrets in your GitHub repository settings (Settings → Secrets and variables → Actions):
+
+- `DOCKERHUB_USERNAME`: Your Docker Hub username
+- `DOCKERHUB_TOKEN`: A Docker Hub access token (create at https://hub.docker.com/settings/security)
+
+### Manual Publishing
+
+You can also publish manually:
 
 1. **Build the image with tags:**
    ```bash
