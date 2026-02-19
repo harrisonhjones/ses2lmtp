@@ -8,9 +8,32 @@ Dockerfile
 
 # Environment files
 .env
+.env.*
 
 # Documentation
 README.md
+DEVELOPMENT.md
+DOCKERHUB.md
+LICENSE.md
 
-# IDE
+# IDE and editor files
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test and coverage files
+*_test.go
+coverage.out
+*.test
+
+# Build artifacts
+ses2lmtp
+*.exe
+
+# CI/CD
+.github/
+
+# Kiro
+.kiro/

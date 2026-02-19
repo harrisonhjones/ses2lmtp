@@ -56,4 +56,4 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: harrisonhjones/ses2lmtp
-          readme-filepath: ./Dockerhub.md
+          readme-filepath: ./DOCKERHUB.md
