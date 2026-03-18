@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 )
 
 func Check(err error, msg string) {
@@ -61,10 +62,5 @@ func Map[T any](input []T, fn func(T) T) []T {
 }
 
 func Contains[T comparable](slice []T, value T) bool {
-	for _, v := range slice {
-		if v == value {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, value)
 }

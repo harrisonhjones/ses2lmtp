@@ -11,8 +11,8 @@ import (
 func TestPointer(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
-		expected interface{}
+		input    any
+		expected any
 	}{
 		{
 			name:     "string value",
@@ -79,8 +79,8 @@ func TestPointer(t *testing.T) {
 func TestValue(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    interface{}
-		expected interface{}
+		input    any
+		expected any
 	}{
 		{
 			name:     "string pointer",

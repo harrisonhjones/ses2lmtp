@@ -79,4 +79,4 @@ Full documentation and source code available at: https://github.com/harrisonhjon
 
 ## License
 
-See the [GitHub repository](https://github.com/harrisonhjones/ses2lmtp) for license information.
+See LICENSE.md
