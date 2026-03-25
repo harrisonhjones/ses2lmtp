@@ -40,7 +40,7 @@ USER appuser
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8080/stats.json | jq -e '.healthy == true' || exit 1
+    CMD curl -f http://localhost:${HEALTH_CHECK_PORT:-8080}/stats.json | jq -e '.healthy == true' || exit 1
 
 # Run the binary
 CMD ["./ses2lmtp"]

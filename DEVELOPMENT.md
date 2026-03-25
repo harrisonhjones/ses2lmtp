@@ -133,6 +133,25 @@ docker inspect --format='{{.State.Health.Status}}' ses2lmtp
 
 The image is published to [harrisonhjones/ses2lmtp](https://hub.docker.com/r/harrisonhjones/ses2lmtp/).
 
+### Releasing a New Version
+
+1. Commit and push all changes to `main`:
+   ```bash
+   git add -A
+   git commit -m "your commit message"
+   git push origin main
+   ```
+
+2. Create and push a version tag:
+   ```bash
+   git tag v1.2.0
+   git push origin v1.2.0
+   ```
+
+3. Go to the GitHub repository → **Releases** → **Draft a new release**, select the tag, add release notes, and click **Publish release**.
+
+Publishing the release triggers the GitHub Actions workflow automatically.
+
 ### Automated Publishing with GitHub Actions
 
 The repository uses GitHub Actions to automatically build and push Docker images:
