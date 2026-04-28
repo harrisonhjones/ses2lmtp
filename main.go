@@ -180,7 +180,10 @@ func main() {
 
 	// Create context for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	defer func() {
+		slog.Info("main is exiting; cancelling the context")
+		cancel()
+	}()
 
 	// Set up signal handling for graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -249,7 +252,7 @@ func main() {
 
 			if err != nil {
 				if ctx.Err() != nil {
-					slog.Info("context cancelled, stopping message processing")
+					slog.Info("context cancelled, stopping queue polling", "ctxErr", err.Error())
 					return
 				}
 				slog.Error("failed to receive messages from sqs", "err", err)
@@ -271,7 +274,7 @@ func main() {
 			for _, message := range result.Messages {
 				// Check context before processing each message
 				if ctx.Err() != nil {
-					slog.Info("context cancelled, stopping message processing")
+					slog.Info("context cancelled, stopping message processing", "ctxErr", err.Error())
 					return
 				}
 
